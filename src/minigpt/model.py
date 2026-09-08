@@ -120,14 +120,18 @@ class GPT(nn.Module):
 
 
 
-def sample(model, prompt="\n", max_new_tokens=300, temperature=1.0):
-    model.eval()
-    idx = torch.tensor([encode(prompt)], dtype=torch.long)
-    for _ in range(max_new_tokens):
-        logits = model(idx[:, -model.block_size:])
-        if isinstance(logits, tuple):
-            logits = logits[0]
-        probs = F.softmax(logits[:, -1] / temperature, dim=-1)
-        idx = torch.cat([idx, torch.multinomial(probs, 1)], dim=1)
-    model.train()
-    return decode(idx[0].tolist())
+    @torch.no_grad()
+    def generate(self, idx, max_new_tokens=300, temperature=1.0, top_k=None):
+        was_training = self.training
+        self.eval()
+        for _ in range(max_new_tokens):
+            logits = self(idx[:, -self.block_size:])
+            logits = logits[:, -1] / temperature
+            if top_k is not None:
+                thresh = torch.topk(logits, min(top_k, logits.size(-1))).values[:, [-1]]
+                logits = logits.masked_fill(logits < thresh, float("-inf"))
+            probs = F.softmax(logits, dim=-1)
+            idx = torch.cat([idx, torch.multinomial(probs, 1)], dim=1)
+        if was_training:
+            self.train()
+        return idx

@@ -17,15 +17,14 @@ def get_lr(step, cfg):
     return min_lr + 0.5 * (cfg.max_lr - min_lr) * (1 + math.cos(math.pi * progress))
 
 @torch.no_grad()
-def estimate_loss(model, iters=20):
+def estimate_loss(model, ds, cfg):
     model.eval()
     out = {}
     for split in ("train", "val"):
-        losses = torch.zeros(iters)
-        for i in range(iters):
-            xb, yb = get_batch(split)
-            _, loss = model(xb, yb)
-            losses[i] = loss
+        losses = torch.zeros(cfg.eval_iters)
+        for i in range(cfg.eval_iters):
+            xb, yb = ds.get_batch(split, cfg.batch_size, cfg.block_size)
+            losses[i] = model(xb, yb)[1]
         out[split] = losses.mean().item()
     model.train()
     return out
@@ -47,8 +46,8 @@ def train(cfg, use_wandb=False):
         for g in opt.param_groups:
             g["lr"] = lr
 
-        xb, yb = get_batch("train", cfg.batch_size, cfg.block_size)
-        _, loss = m(xb, yb)
+        xb, yb = ds.get_batch("train", cfg.batch_size, cfg.block_size)
+        _, loss = model(xb, yb)
         opt.zero_grad()
         loss.backward()
         grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
