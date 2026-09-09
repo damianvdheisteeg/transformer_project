@@ -1,0 +1,22 @@
+# configuration of laptop
+run_name: laptop-debug
+
+model:
+  n_layer: 4
+  n_head: 4
+  n_embd: 128
+  block_size: 128
+
+train:
+  batch_size: 16
+  max_steps: 200
+  lr: 3.0e-4
+  dtype: float32
+  compile: false
+  eval_interval: 50
+  eval_iters: 4
+  seed: 1337
+  device: cpu     # or mps
+
+data:
+  path: data/input.txt

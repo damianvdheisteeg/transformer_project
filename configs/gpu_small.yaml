@@ -1,0 +1,22 @@
+# configuration for small GPU
+run_name: base-fp32
+
+model:
+  n_layer: 6
+  n_head: 6
+  n_embd: 384
+  block_size: 256
+
+train:
+  batch_size: 64
+  max_steps: 1000
+  lr: 3.0e-4
+  dtype: float32
+  compile: false
+  eval_interval: 100
+  eval_iters: 20
+  seed: 1337
+  device: cuda
+
+data:
+  path: data/input.txt
