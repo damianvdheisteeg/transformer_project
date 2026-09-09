@@ -10,7 +10,7 @@ class ModelConfig:
     n_head: int = 4
     n_embd: int = 128
     block_size: int = 64
-    vocab_size: int = 65        # set from dataset at runtime
+    vocab_size: int = 65        # TODO set from dataset at runtime
 
 @dataclass
 class TrainConfig:
@@ -22,11 +22,19 @@ class TrainConfig:
     eval_interval: int = 100
     eval_iters: int = 20
     seed: int = 1337
+    device: str = "cpu"
+
+@dataclass
+class DataConfig:
+    path: str = "data/input.txt"
+    encoding: str = "char"              # "char" | "gpt2"
+    memmap: bool = False                # True for uint16 .bin in Part 2
 
 @dataclass
 class Config:
     model: ModelConfig = field(default_factory=ModelConfig)
     train: TrainConfig = field(default_factory=TrainConfig)
+    data: DataConfig = field(default_factory=DataConfig)
     run_name: str = "debug"
 
     @classmethod
@@ -34,6 +42,7 @@ class Config:
         raw = yaml.safe_load(open(path))
         return cls(model=ModelConfig(**raw.get("model", {})),
                    train=TrainConfig(**raw.get("train", {})),
+                   data=DataConfig(**raw.get("data", {})),
                    run_name=raw.get("run_name", "debug"))
     
     @classmethod
@@ -48,8 +57,3 @@ class Config:
             setattr(obj, leaf, type(current)(value))
         return cfg
 
-@dataclass
-class DataConfig:
-    path: str = "data/input.txt"
-    encoding: str = "char"              # "char" | "gpt2"
-    memmap: bool = False                # True for uint16 .bin in Part 2

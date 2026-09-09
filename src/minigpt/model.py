@@ -5,7 +5,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-def attention(q, k, v):
+from torch import Tensor
+
+def attention(q: Tensor, k: Tensor, v: Tensor) -> Tensor:
     """q, k, v: (B, T, C). Returns (B, T, C)."""
     # B, T, C = q.shape
     C = q.size(-1)
@@ -14,26 +16,26 @@ def attention(q, k, v):
     output = weights @ v # (B, T, T) * (B, C, T) -> (B, T, C)
     return output
 
-def causal_attention(q, k, v):
-    """Like attention(), but position t only sees positions <= t."""
-    """q, k, v: (B, T, C). Returns (B, T, C)."""
+def causal_attention(q: Tensor, k: Tensor, v: Tensor) -> Tensor:
+    """Like attention(), but position t only sees positions <= t.
+    q, k, v: (B, T, C). Returns (B, T, C)."""
     T, C = q.size(-2), q.size(-1)
     scores = q @ k.transpose(-2, -1) / math.sqrt(C) # (B, T, C) * (B, C, T) -> (B, T, T)
-    mask = torch.tril(torch.ones(T, T, dtype=torch.bool))
+    mask = torch.tril(torch.ones(T, T, dtype=torch.bool, device=q.device))
     scores = scores.masked_fill(~mask, float("-inf"))
     weights = F.softmax(scores, dim=-1) # (B, T, T) -> (B, T, T)
     output = weights @ v # (B, T, T) * (B, C, T) -> (B, T, C)
     return output
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, n_embd, n_head):
+    def __init__(self, n_embd: int, n_head: int) -> None:
         super().__init__()
-        assert n_embd % n_head == 0
+        assert n_embd % n_head == 0, f"n_embd={n_embd} not divisible by n_head={n_head}"
         self.n_head = n_head
         self.c_attn = nn.Linear(n_embd, 3 * n_embd) # split in q,k,v 
         self.c_proj = nn.Linear(n_embd, n_embd)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         # dimensions, hd is size of head
         B, T, C = x.shape
         hd = C // self.n_head
@@ -57,30 +59,30 @@ class MultiHeadAttention(nn.Module):
         return output
 
 class MLP(nn.Module):
-    def __init__(self, n_embd):
+    def __init__(self, n_embd: int) -> None:
         super().__init__()
         self.c_fc = nn.Linear(n_embd, 4*n_embd)
         self.c_proj = nn.Linear(4*n_embd, n_embd)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return self.c_proj(F.gelu(self.c_fc(x)))
 
 
 class Block(nn.Module):
-    def __init__(self, n_embd, n_head):
+    def __init__(self, n_embd: int, n_head: int) -> None:
         super().__init__()
         self.ln_1 = nn.LayerNorm(n_embd)
         self.attn = MultiHeadAttention(n_embd, n_head)
         self.ln_2 = nn.LayerNorm(n_embd)
         self.mlp = MLP(n_embd)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         x = x + self.attn(self.ln_1(x))
         x = x + self.mlp(self.ln_2(x))
         return x
 
 class GPT(nn.Module):
-    def __init__(self, vocab_size, block_size, n_layer, n_head, n_embd):
+    def __init__(self, vocab_size: int, block_size: int, n_layer: int, n_head: int, n_embd: int) -> None:
         super().__init__()
         self.block_size = block_size
         # define layers
@@ -94,7 +96,7 @@ class GPT(nn.Module):
         # init all weights
         self.apply(self._init)
 
-    def _init(self, m):
+    def _init(self, m: nn.Module):
         if isinstance(m, (nn.Linear, nn.Embedding)):
             nn.init.normal_(m.weight, mean=0.0, std=0.02)
             if isinstance(m, nn.Linear) and m.bias is not None:
@@ -102,10 +104,10 @@ class GPT(nn.Module):
 
 
 
-    def forward(self, idx, targets=None):
+    def forward(self, idx: Tensor, targets: Tensor | None = None) -> tuple[Tensor, Tensor | None]:
         # read off dimensions from token sequence
         B, T = idx.size()
-        pos = torch.arange(T, dtype=torch.long)
+        pos = torch.arange(T, dtype=torch.long, device=idx.device)
         # pass through layers
         x = self.tok_emb(idx) + self.pos_emb(pos) # (B, T, C) + (B, )
         for block in self.blocks:
@@ -113,15 +115,13 @@ class GPT(nn.Module):
         x = self.ln_f(x)
         logits = self.lm_head(x)
         # output depending on targets
-        if targets is None:
-            return logits
-        loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
-        return (logits, loss)
+        loss = None if targets is None else F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
+        return logits, loss
 
 
 
     @torch.no_grad()
-    def generate(self, idx, max_new_tokens=300, temperature=1.0, top_k=None):
+    def generate(self, idx: Tensor, max_new_tokens: int = 300, temperature: float = 1.0, top_k: int | None = None):
         was_training = self.training
         self.eval()
         for _ in range(max_new_tokens):
