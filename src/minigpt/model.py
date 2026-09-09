@@ -100,7 +100,7 @@ class GPT(nn.Module):
         # init all weights
         self.apply(self._init)
 
-    def _init(self, m: nn.Module):
+    def _init(self, m: nn.Module) -> None:
         if isinstance(m, (nn.Linear, nn.Embedding)):
             nn.init.normal_(m.weight, mean=0.0, std=0.02)
             if isinstance(m, nn.Linear) and m.bias is not None:
@@ -125,11 +125,11 @@ class GPT(nn.Module):
 
 
     @torch.no_grad()
-    def generate(self, idx: Tensor, max_new_tokens: int = 300, temperature: float = 1.0, top_k: int | None = None):
+    def generate(self, idx: Tensor, max_new_tokens: int = 300, temperature: float = 1.0, top_k: int | None = None) -> Tensor:
         was_training = self.training
         self.eval()
         for _ in range(max_new_tokens):
-            logits = self(idx[:, -self.block_size:])
+            logits, _ = self(idx[:, -self.block_size:])
             logits = logits[:, -1] / temperature
             if top_k is not None:
                 thresh = torch.topk(logits, min(top_k, logits.size(-1))).values[:, [-1]]

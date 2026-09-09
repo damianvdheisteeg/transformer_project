@@ -1,5 +1,5 @@
 """Training loop for minigpt."""
-from dataclasses import dataclass, asdict
+from dataclasses import asdict
 import math
 import wandb
 import torch
@@ -18,13 +18,15 @@ def get_lr(step: int, cfg: TrainConfig) -> float:
 
 @torch.no_grad()
 def estimate_loss(model: GPT, ds: CharDataset, cfg: Config) -> dict[str, float]:
+    device = next(model.parameters()).device
     model.eval()
     out = {}
     for split in ("train", "val"):
         losses = torch.zeros(cfg.train.eval_iters)
         for i in range(cfg.train.eval_iters):
             xb, yb = ds.get_batch(split, cfg.train.batch_size, cfg.model.block_size)
-            losses[i] = model(xb, yb)[1]
+            xb, yb = xb.to(device), yb.to(device)
+            _, losses[i] = model(xb, yb)
         out[split] = losses.mean().item()
     model.train()
     return out
@@ -36,7 +38,9 @@ def train(cfg: Config, use_wandb: bool = False) -> tuple[GPT, CharDataset, dict[
 
     torch.manual_seed(cfg.train.seed)
     ds = CharDataset(cfg.data.path)
-    model = GPT(cfg.model)
+    cfg.model.vocab_size = ds.vocab_size
+    device = torch.device(cfg.train.device)
+    model = GPT(cfg.model).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.train.max_lr)
     history = {"step": [], "train": [], "val": []}
 
@@ -46,6 +50,7 @@ def train(cfg: Config, use_wandb: bool = False) -> tuple[GPT, CharDataset, dict[
             g["lr"] = lr
 
         xb, yb = ds.get_batch("train", cfg.train.batch_size, cfg.model.block_size)
+        xb, yb = xb.to(device), yb.to(device)
         _, loss = model(xb, yb)
         opt.zero_grad()
         loss.backward()

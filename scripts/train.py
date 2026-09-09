@@ -1,13 +1,16 @@
-import argparse
-from dataclasses import fields
-from minigpt.config import TrainConfig
+"""Entry point: parse config, run training."""
+import sys
+
+from minigpt.config import Config
 from minigpt.train import train
 
-p = argparse.ArgumentParser()
-for f in fields(TrainConfig):
-    p.add_argument(f"--{f.name.replace('_', '-')}", type=type(f.default), default=f.default)
-p.add_argument("--wandb", action="store_true")
-args = p.parse_args()
-use_wandb = args.wandb; del args.wandb
-cfg = TrainConfig(**vars(args))
-train(cfg, use_wandb=use_wandb)
+
+def main() -> None:
+    if len(sys.argv) < 2:
+        sys.exit("usage: train.py <config.yaml> [key=value ...]")
+    cfg = Config.from_cli(sys.argv[1:])
+    train(cfg)
+
+
+if __name__ == "__main__":
+    main()
