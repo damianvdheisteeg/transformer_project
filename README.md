@@ -1,0 +1,1 @@
+This is a test project to build a miniGPT model. The code was built from scratch in transformer_lab.ipynb, and subsequently turned into python script as a package. 
