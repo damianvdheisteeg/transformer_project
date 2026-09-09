@@ -3,3 +3,6 @@ __pycache__/
 wandb/
 input.txt
 *.ipynb_checkpoints
+*.egg-info/
+build/
+dist/
