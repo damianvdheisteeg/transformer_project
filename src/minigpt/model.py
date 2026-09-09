@@ -7,6 +7,8 @@ import torch.nn.functional as F
 
 from torch import Tensor
 
+from minigpt.config import ModelConfig
+
 def attention(q: Tensor, k: Tensor, v: Tensor) -> Tensor:
     """q, k, v: (B, T, C). Returns (B, T, C)."""
     # B, T, C = q.shape
@@ -82,15 +84,17 @@ class Block(nn.Module):
         return x
 
 class GPT(nn.Module):
-    def __init__(self, vocab_size: int, block_size: int, n_layer: int, n_head: int, n_embd: int) -> None:
+    def __init__(self, cfg: ModelConfig) -> None:
         super().__init__()
-        self.block_size = block_size
+        assert cfg.vocab_size > 0, f"vocab size must be set from the dataset, got {cfg.vocab_size}"
+        self.cfg = cfg
+        self.block_size = cfg.block_size
         # define layers
-        self.tok_emb = nn.Embedding(vocab_size, n_embd)
-        self.pos_emb = nn.Embedding(block_size, n_embd)
-        self.blocks = nn.ModuleList([Block(n_embd, n_head) for _ in range(n_layer)])
-        self.ln_f = nn.LayerNorm(n_embd)
-        self.lm_head = nn.Linear(n_embd, vocab_size, bias=False) 
+        self.tok_emb = nn.Embedding(cfg.vocab_size, cfg.n_embd)
+        self.pos_emb = nn.Embedding(cfg.block_size, cfg.n_embd)
+        self.blocks = nn.ModuleList([Block(cfg.n_embd, cfg.n_head) for _ in range(cfg.n_layer)])
+        self.ln_f = nn.LayerNorm(cfg.n_embd)
+        self.lm_head = nn.Linear(cfg.n_embd, cfg.vocab_size, bias=False) 
         # tie weights at beginning and end
         self.lm_head.weight = self.tok_emb.weight
         # init all weights
