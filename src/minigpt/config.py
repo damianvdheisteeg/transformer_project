@@ -1,6 +1,7 @@
 """Training configuration."""
 from dataclasses import dataclass, field
 import yaml
+from pathlib import Path
 
 
 @dataclass
@@ -23,7 +24,7 @@ class TrainConfig:
     eval_iters: int = 20
     eval_batch_size: int = 32
     seed: int = 1337
-    device: str = "mps"
+    device: str = "cpu"         # or mps
 
     # learning rate schedule for warm-up cosine decay
     max_lr: float = 3.0e-4
@@ -44,7 +45,7 @@ class Config:
 
     @classmethod
     def from_yaml(cls, path: str) -> "Config":
-        raw = yaml.safe_load(open(path))
+        raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
         return cls(model=ModelConfig(**raw.get("model", {})),
                    train=TrainConfig(**raw.get("train", {})),
                    data=DataConfig(**raw.get("data", {})),

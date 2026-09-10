@@ -10,7 +10,7 @@ from .model import GPT
 
 def get_lr(step: int, cfg: TrainConfig) -> float:
     """Linear warmup to max_lr, then cosine decay to max_lr / 10. """
-    if step < cfg.warmup_steps:
+    if cfg.warmup_steps > 0 and step < cfg.warmup_steps:
         return cfg.max_lr * (step + 1) / cfg.warmup_steps
     progress = (step - cfg.warmup_steps) / (cfg.max_steps - cfg.warmup_steps)
     min_lr = cfg.max_lr / 10
@@ -24,7 +24,7 @@ def estimate_loss(model: GPT, ds: CharDataset, cfg: Config) -> dict[str, float]:
     for split in ("train", "val"):
         losses = torch.zeros(cfg.train.eval_iters)
         for i in range(cfg.train.eval_iters):
-            xb, yb = ds.get_batch(split, cfg.train.batch_size, cfg.model.block_size)
+            xb, yb = ds.get_batch(split, cfg.train.eval_batch_size, cfg.model.block_size)
             xb, yb = xb.to(device), yb.to(device)
             _, losses[i] = model(xb, yb)
         out[split] = losses.mean().item()
@@ -33,12 +33,14 @@ def estimate_loss(model: GPT, ds: CharDataset, cfg: Config) -> dict[str, float]:
 
 def train(cfg: Config, use_wandb: bool = False) -> tuple[GPT, CharDataset, dict[str, list[int] | list[float]]]:
 
-    if use_wandb:
-        wandb.init(project="transformer-lab", config=asdict(cfg))
-
     torch.manual_seed(cfg.train.seed)
     ds = CharDataset(cfg.data.path)
     cfg.model.vocab_size = ds.vocab_size
+
+    if use_wandb:
+        wandb.init(project="transformer-lab", config=asdict(cfg))
+
+    
     device = torch.device(cfg.train.device)
     model = GPT(cfg.model).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.train.max_lr)
