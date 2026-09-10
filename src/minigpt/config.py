@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 import yaml
 from pathlib import Path
 
+from minigpt.data import resolve_path
+
 
 @dataclass
 class ModelConfig:
@@ -44,8 +46,10 @@ class Config:
     run_name: str = "debug"
 
     @classmethod
-    def from_yaml(cls, path: str) -> "Config":
-        raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    def from_yaml(cls, path: str | Path) -> "Config":
+        p = resolve_path(path)
+        assert p.exists(), f"config not found: {p}"
+        raw = yaml.safe_load(p.read_text(encoding="utf-8"))
         return cls(model=ModelConfig(**raw.get("model", {})),
                    train=TrainConfig(**raw.get("train", {})),
                    data=DataConfig(**raw.get("data", {})),

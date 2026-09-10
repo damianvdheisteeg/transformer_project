@@ -5,11 +5,21 @@ from typing import Literal
 from collections.abc import Sequence
 from torch import Tensor
 
+REPO_ROOT = next(p for p in Path(__file__).resolve().parents
+                 if (p / "pyproject.toml").exists())
+
+
+def resolve_path(path: str | Path) -> Path:
+    """Resolve a path relative to the repo root, leaving absolute paths alone."""
+    p = Path(path)
+    return p if p.is_absolute() else REPO_ROOT / p
 
 class CharDataset:
     def __init__(self, path: str | Path = "data/input.txt", train_frac: float = 0.9) -> None:
         assert 0.0 < train_frac < 1.0, f"train_frac must be in (0,1), got {train_frac}"
-        text = Path(path).read_text(encoding="utf-8")
+        p = resolve_path(path)
+        assert p.exists(), f"dataset not found: {p}"
+        text = p.read_text(encoding="utf-8")
         self.chars = sorted(set(text))
         self.vocab_size = len(self.chars)
         self.stoi = {c: i for i, c in enumerate(self.chars)}
