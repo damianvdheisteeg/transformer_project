@@ -31,14 +31,13 @@ def estimate_loss(model: GPT, ds: CharDataset, cfg: Config) -> dict[str, float]:
     model.train()
     return out
 
-def train(cfg: Config, use_wandb: bool = False) -> tuple[GPT, CharDataset, dict[str, list[int] | list[float]]]:
+def train(cfg: Config) -> tuple[GPT, CharDataset, dict[str, list[int] | list[float]]]:
 
     torch.manual_seed(cfg.train.seed)
     ds = CharDataset(cfg.data.path)
     cfg.model.vocab_size = ds.vocab_size
 
-    if use_wandb:
-        wandb.init(project="transformer-lab", config=asdict(cfg))
+    wandb.init(project="transformer-lab", name=cfg.run_name, mode=cfg.train.mode, config=asdict(cfg))
 
     
     device = torch.device(cfg.train.device)
@@ -59,8 +58,7 @@ def train(cfg: Config, use_wandb: bool = False) -> tuple[GPT, CharDataset, dict[
         grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         opt.step()
 
-        if use_wandb:
-            wandb.log({"loss/train_batch": loss.item(),
+        wandb.log({"loss/train_batch": loss.item(),
                        "lr": lr,
                        "grad_norm": grad_norm.item()}, step=step)
 
@@ -70,9 +68,9 @@ def train(cfg: Config, use_wandb: bool = False) -> tuple[GPT, CharDataset, dict[
             history["train"].append(L["train"])
             history["val"].append(L["val"])
             print(f"step {step:5d}  train {L['train']:.4f}  val {L['val']:.4f}")
-            if use_wandb:
-                wandb.log({"loss/train": L["train"], "loss/val": L["val"]}, step=step)
 
-    if use_wandb:
-        wandb.finish()
+            wandb.log({"loss/train": L["train"], "loss/val": L["val"]}, step=step)
+
+    wandb.finish()
+
     return model, ds, history

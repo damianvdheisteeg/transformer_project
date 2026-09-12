@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field
 import yaml
 from pathlib import Path
+from typing import Literal
 
 from minigpt.data import resolve_path
 
@@ -19,7 +20,7 @@ class ModelConfig:
 class TrainConfig:
     batch_size: int = 32
     max_steps: int = 2000
-    lr: float = 3e-4            # use this or warmup-cosine decay
+#    lr: float = 3e-4            # use this or warmup-cosine decay
     dtype: str = "float32"      # "float32" | "bfloat16" | "float16"
     compile: bool = False
     eval_interval: int = 100
@@ -27,6 +28,7 @@ class TrainConfig:
     eval_batch_size: int = 32
     seed: int = 1337
     device: str = "cpu"         # or mps
+    mode: Literal["online", "offline", "disabled", "shared"] | None = "disabled"      
 
     # learning rate schedule for warm-up cosine decay
     max_lr: float = 3.0e-4

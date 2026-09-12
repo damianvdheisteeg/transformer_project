@@ -2,11 +2,15 @@
 import os
 import urllib.request
 
+from minigpt.data import resolve_path
+
 URL = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
 
-if os.path.exists("input.txt"):
-    print("input.txt already present, nothing to do")
+out = resolve_path("data/input.txt")
+if out.exists():
+    print(f"{out} already present, nothing to do")
 else:
-    urllib.request.urlretrieve(URL, "input.txt")
-    n = len(open("input.txt").read())
-    print(f"downloaded input.txt ({n:,} characters)")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    urllib.request.urlretrieve(URL, out)
+    n = len(out.read_text(encoding="utf-8"))
+    print(f"downloaded {out} ({n:,} characters)")

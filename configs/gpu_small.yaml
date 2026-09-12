@@ -9,14 +9,16 @@ model:
 
 train:
   batch_size: 64
-  max_steps: 1000
-  lr: 3.0e-4
+  max_steps: 2000
+  max_lr: 1.0e-3
   dtype: float32
   compile: false
   eval_interval: 100
-  eval_iters: 20
+  eval_iters: 40
+  eval_batch_size: 64
   seed: 1337
   device: cuda
+  mode: online
 
 data:
   path: data/input.txt

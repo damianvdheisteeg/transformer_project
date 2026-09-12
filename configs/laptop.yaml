@@ -10,13 +10,14 @@ model:
 train:
   batch_size: 16
   max_steps: 200
-  lr: 3.0e-4
+  max_lr: 3.0e-4
   dtype: float32
   compile: false
   eval_interval: 50
   eval_iters: 4
   seed: 1337
-  device: cpu     # or mps
+  device: mps     # or cpu
+  mode: disabled
 
 data:
   path: data/input.txt
